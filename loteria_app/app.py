@@ -23,7 +23,7 @@ st.set_page_config(
 # =========================
 # CONFIGURAÇÕES
 # =========================
-CAMINHO_BASE = "data/Mega-Sena.xlsx"
+CAMINHO_BASE = "loteria_app/data/Mega-Sena.xlsx"
 CAMINHO_LOGO = "assets/logo.png"
 NOME_APP = "Loteria Inteligente"
 LOTERIA_NOME = "Mega-Sena"
