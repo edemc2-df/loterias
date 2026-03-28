@@ -206,6 +206,8 @@ pagina = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
+st.sidebar.markdown("### 👨‍💻 Sobre")
+st.sidebar.markdown("Desenvolvido por **Ed**")
 st.sidebar.markdown("### Perfil")
 perfil = st.sidebar.selectbox(
     "Perfil de geração",
