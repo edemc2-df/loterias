@@ -401,5 +401,15 @@ elif pagina == "Base e Estatísticas":
     with tab2:
         st.dataframe(ultimo_concurso, use_container_width=True, hide_index=True)
 
+st.markdown(
+    """
+    <hr style="margin-top: 40px;">
+    <div style='text-align: center; color: #94a3b8; font-size: 14px;'>
+        Desenvolvido por <strong>Ed Casado</strong> 🚀
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
     with tab3:
         st.dataframe(df.head(50), use_container_width=True, hide_index=True)
