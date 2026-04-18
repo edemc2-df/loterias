@@ -1,55 +1,67 @@
-# Loteria Inteligente
+# Loterias Inteligentes
 
-Aplicativo em Streamlit para análise histórica da Mega-Sena e geração inteligente de jogos com base em:
+Aplicativo em Streamlit para analise historica e geracao inteligente de jogos para:
 
-- frequência histórica
-- atraso dos números
-- score ponderado
-- perfis de geração
-- exportação dos jogos em Excel
+- Mega-Sena
+- Lotofacil
+- Quina
 
-## Estrutura do projeto
+O motor segue a mesma linha do notebook `loterias.ipynb` e combina:
+
+- frequencia historica
+- atraso por dezena
+- soma historica dos concursos
+- equilibrio entre pares e impares
+- distribuicao por faixas numericas
+- mistura entre quentes, frios e atrasados
+- perfis com pesos configuraveis
+
+## Estrutura
 
 ```text
 loteria_app/
-│
-├── app.py
-├── utils.py
-├── requirements.txt
-├── data/
-│   └── Mega-Sena.xlsx
-└── assets/
-    └── logo.png   # opcional
+|-- app.py
+|-- utils.py
+|-- requirements.txt
+|-- data/
+|   |-- Mega-Sena.xlsx
+|   |-- Lotofacil.xlsx
+|   `-- Quina.xlsx
+`-- assets/
+    `-- logo.png   # opcional
 ```
 
-## Como rodar localmente
+## Como rodar
 
-1. Crie e acesse a pasta do projeto.
-2. Coloque os arquivos `app.py`, `utils.py` e `requirements.txt`.
-3. Crie a pasta `data` e coloque dentro dela o arquivo `Mega-Sena.xlsx`.
-4. Opcionalmente, crie a pasta `assets` e adicione um `logo.png`.
-5. Instale as dependências:
+1. Entre na pasta `loteria_app`.
+2. Instale as dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-6. Rode o app:
+3. Rode o aplicativo:
 
 ```bash
 streamlit run app.py
 ```
 
-## Como publicar no Streamlit Cloud
+Se preferir rodar a partir da raiz do repositorio:
 
-1. Suba os arquivos para um repositório no GitHub.
-2. Verifique se a base está em `data/Mega-Sena.xlsx`.
-3. No Streamlit Community Cloud, conecte o repositório.
-4. Defina o arquivo principal como `app.py`.
-5. Clique em deploy.
+```bash
+streamlit run loteria_app/app.py
+```
 
-## Observações
+## O que a interface entrega
 
-- O app considera datas no formato brasileiro com `dayfirst=True`.
-- O logo é opcional.
-- A base é fixa e carregada automaticamente ao abrir o aplicativo.
+- selecao da loteria em uma unica tela
+- dashboard historico com graficos e pools de referencia
+- gerador de jogos com perfis e pesos configuraveis
+- ranking dos melhores jogos com score detalhado
+- exportacao dos jogos gerados para Excel
+
+## Observacoes
+
+- As datas sao tratadas com `dayfirst=True`.
+- O logo na pasta `assets/` e opcional.
+- As bases sao carregadas automaticamente a partir da pasta `data/`.
