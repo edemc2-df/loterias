@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import unicodedata
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +9,7 @@ import pandas as pd
 
 
 APP_DIR = Path(__file__).resolve().parent
+DATA_DIR = APP_DIR / "data"
 
 LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
     "mega_sena": {
@@ -15,7 +17,8 @@ LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
         "label": "Mega-Sena",
         "icon": "🎯",
         "description": "Analise historica com 6 dezenas entre 1 e 60.",
-        "file_path": APP_DIR / "data" / "Mega-Sena.xlsx",
+        "preferred_filename": "Mega-Sena.xlsx",
+        "candidate_files": ["Mega-Sena.xlsx", "Mega Sena.xlsx", "megasena.xlsx"],
         "numbers_per_game": 6,
         "max_number": 60,
         "bucket_size": 10,
@@ -28,7 +31,8 @@ LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
         "label": "Lotofacil",
         "icon": "🍀",
         "description": "Analise historica com 15 dezenas entre 1 e 25.",
-        "file_path": APP_DIR / "data" / "Lotofacil.xlsx",
+        "preferred_filename": "Lotofacil.xlsx",
+        "candidate_files": ["Lotofacil.xlsx", "Lotofácil.xlsx", "lotofacil.xlsx", "lotofacil.xls"],
         "numbers_per_game": 15,
         "max_number": 25,
         "bucket_size": 5,
@@ -41,7 +45,8 @@ LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
         "label": "Quina",
         "icon": "🔵",
         "description": "Analise historica com 5 dezenas entre 1 e 80.",
-        "file_path": APP_DIR / "data" / "Quina.xlsx",
+        "preferred_filename": "Quina.xlsx",
+        "candidate_files": ["Quina.xlsx", "quina.xlsx"],
         "numbers_per_game": 5,
         "max_number": 80,
         "bucket_size": 10,
@@ -78,6 +83,34 @@ def obter_config_loteria(lottery_key: str) -> dict[str, object]:
     if lottery_key not in LOTTERY_CONFIGS:
         raise KeyError(f"Loteria desconhecida: {lottery_key}")
     return LOTTERY_CONFIGS[lottery_key]
+
+
+def _normalizar_nome_arquivo(nome: str) -> str:
+    texto = unicodedata.normalize("NFKD", nome)
+    texto = "".join(char for char in texto if not unicodedata.combining(char))
+    texto = texto.lower()
+    return "".join(char for char in texto if char.isalnum())
+
+
+def resolver_caminho_base(config: dict[str, object]) -> Path:
+    candidatos = [DATA_DIR / str(nome) for nome in config.get("candidate_files", [])]
+
+    for caminho in candidatos:
+        if caminho.exists():
+            return caminho
+
+    esperados = {_normalizar_nome_arquivo(Path(str(nome)).stem) for nome in config.get("candidate_files", [])}
+    disponiveis = [arquivo for arquivo in DATA_DIR.glob("*") if arquivo.is_file()]
+
+    for arquivo in disponiveis:
+        if _normalizar_nome_arquivo(arquivo.stem) in esperados:
+            return arquivo
+
+    arquivos_encontrados = ", ".join(sorted(arquivo.name for arquivo in disponiveis)) or "nenhum arquivo encontrado"
+    raise FileNotFoundError(
+        f"Base nao encontrada para {config['label']}. Pasta verificada: {DATA_DIR}. "
+        f"Arquivos encontrados: {arquivos_encontrados}."
+    )
 
 
 def carregar_base(caminho: str | Path) -> pd.DataFrame:
@@ -182,7 +215,8 @@ def _round_half_up(valor: float) -> int:
 
 def analisar_loteria(lottery_key: str) -> dict[str, object]:
     config = obter_config_loteria(lottery_key)
-    df = carregar_base(config["file_path"])
+    file_path = resolver_caminho_base(config)
+    df = carregar_base(file_path)
     colunas_dezenas = detectar_colunas_dezenas(df)
     if not colunas_dezenas:
         raise ValueError("Nao encontrei colunas de dezenas na base informada.")
@@ -235,6 +269,7 @@ def analisar_loteria(lottery_key: str) -> dict[str, object]:
 
     return {
         "config": config,
+        "file_path": file_path,
         "df": base_tratada,
         "colunas_dezenas": colunas_dezenas,
         "frequencia": frequencia,

@@ -243,11 +243,13 @@ def mostrar_logo() -> None:
 
 def sincronizar_pesos(chave_loteria: str, perfil: str) -> None:
     marcador = f"{chave_loteria}_perfil_pesos"
-    if st.session_state.get(marcador) == perfil:
-        return
+    pesos_padrao = obter_pesos_perfil(perfil)
+    perfil_mudou = st.session_state.get(marcador) != perfil
 
-    for nome_peso, valor in obter_pesos_perfil(perfil).items():
-        st.session_state[f"{chave_loteria}_peso_{nome_peso}"] = float(valor)
+    for nome_peso, valor in pesos_padrao.items():
+        chave_peso = f"{chave_loteria}_peso_{nome_peso}"
+        if perfil_mudou or chave_peso not in st.session_state:
+            st.session_state[chave_peso] = float(valor)
 
     st.session_state[marcador] = perfil
 
@@ -382,9 +384,13 @@ aplicar_estilo(config)
 
 try:
     analise = carregar_analise(lottery_key)
-except FileNotFoundError:
+except FileNotFoundError as exc:
     st.error(f"Não encontrei a base esperada para {config['label']}.")
-    st.info(f"Verifique o arquivo em `{config['file_path']}`.")
+    st.info(
+        "Confira se a planilha foi enviada para o repositório dentro de `loteria_app/data/` "
+        "e se o nome do arquivo está correto no deploy."
+    )
+    st.caption(str(exc))
     st.stop()
 except Exception as exc:
     st.error("Não foi possível carregar a análise histórica desta loteria.")
