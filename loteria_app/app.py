@@ -378,7 +378,7 @@ if "generated_results" not in st.session_state:
 
 
 st.markdown(f"## {APP_TITLE}")
-st.caption("Selecione a loteria, ajuste o perfil e gere jogos com base na analise historica.")
+st.caption("Selecione a loteria, ajuste o perfil e gere jogos com base na analise histórica.")
 
 lottery_key = st.radio(
     "Escolha a loteria",
@@ -398,7 +398,7 @@ except FileNotFoundError as exc:
     st.caption(str(exc))
     st.stop()
 except Exception as exc:
-    st.error("Nao foi possivel carregar a analise historica desta loteria.")
+    st.error("Nao foi possivel carregar a analise histórica desta loteria.")
     st.exception(exc)
     st.stop()
 
@@ -407,7 +407,7 @@ st.sidebar.markdown(f"## {APP_TITLE}")
 st.sidebar.caption(f"{config['icon']} Motor configurado para {config['label']}")
 
 perfil = st.sidebar.selectbox(
-    "Perfil de geracao",
+    "Perfil de geração",
     options=list(PROFILE_LABELS.keys()),
     format_func=lambda chave: PROFILE_LABELS[chave],
     key=f"{lottery_key}_perfil",
@@ -585,10 +585,10 @@ st.markdown(
     f"""
     <div class="hero">
         <div class="hero-tag">{config['icon']} {config['label']}</div>
-        <div class="hero-title">Interface unica para analisar e gerar jogos com inteligencia historica</div>
+        <div class="hero-title">Interface única para analisar e gerar jogos com inteligência histórica</div>
         <p class="hero-subtitle">
-            {config['description']} O motor usa frequencia, atraso, soma historica,
-            distribuicao em faixas e perfis ponderados para montar apostas de forma pratica.
+            {config['description']} O motor usa frequencia, atraso, soma histórica,
+            distribuição em faixas e perfis ponderados para montar apostas de forma prática.
         </p>
     </div>
     """,
@@ -596,8 +596,8 @@ st.markdown(
 )
 
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Concursos validos", len(analise_base["df"]))
-k2.metric("Ultima data", analise_base["data_ultimo"])
+k1.metric("Concursos válidos", len(analise_base["df"]))
+k2.metric("Última data", analise_base["data_ultimo"])
 k3.metric("Dezenas por jogo", int(analise_aposta["qtd_dezenas"]))
 k4.metric("Maior atraso", int(analise_base["maior_atraso"]))
 k5.metric("Soma alvo", round(float(analise_aposta["media_soma"]), 1))
