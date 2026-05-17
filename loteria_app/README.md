@@ -57,6 +57,8 @@ streamlit run loteria_app/app.py
 - selecao da loteria em uma unica tela
 - dashboard historico com graficos e pools de referencia
 - gerador de jogos com perfis e pesos configuraveis
+- seletor de 15 a 20 dezenas para a Lotofacil
+- modo cobertura para reduzir repeticao entre os jogos gerados
 - ranking dos melhores jogos com score detalhado
 - exportacao dos jogos gerados para Excel
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections import Counter
 import math
-import unicodedata
 from pathlib import Path
+import unicodedata
 
 import numpy as np
 import pandas as pd
@@ -15,11 +16,12 @@ LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
     "mega_sena": {
         "key": "mega_sena",
         "label": "Mega-Sena",
-        "icon": "🎯",
+        "icon": "\U0001F3AF",
         "description": "Analise historica com 6 dezenas entre 1 e 60.",
-        "preferred_filename": "Mega-Sena.xlsx",
         "candidate_files": ["Mega-Sena.xlsx", "Mega Sena.xlsx", "megasena.xlsx"],
         "numbers_per_game": 6,
+        "min_numbers_per_game": 6,
+        "max_numbers_per_game": 6,
         "max_number": 60,
         "bucket_size": 10,
         "reference_pool_size": 15,
@@ -29,11 +31,12 @@ LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
     "lotofacil": {
         "key": "lotofacil",
         "label": "Lotofacil",
-        "icon": "🍀",
-        "description": "Analise historica com 15 dezenas entre 1 e 25.",
-        "preferred_filename": "Lotofacil.xlsx",
-        "candidate_files": ["Lotofacil.xlsx", "Lotofácil.xlsx", "lotofacil.xlsx", "lotofacil.xls"],
+        "icon": "\U0001F340",
+        "description": "Analise historica com apostas de 15 a 20 dezenas em um universo de 25 numeros.",
+        "candidate_files": ["Lotofacil.xlsx", "Lotof\u00e1cil.xlsx", "lotofacil.xlsx", "lotofacil.xls"],
         "numbers_per_game": 15,
+        "min_numbers_per_game": 15,
+        "max_numbers_per_game": 20,
         "max_number": 25,
         "bucket_size": 5,
         "reference_pool_size": 12,
@@ -43,11 +46,12 @@ LOTTERY_CONFIGS: dict[str, dict[str, object]] = {
     "quina": {
         "key": "quina",
         "label": "Quina",
-        "icon": "🔵",
+        "icon": "\U0001F535",
         "description": "Analise historica com 5 dezenas entre 1 e 80.",
-        "preferred_filename": "Quina.xlsx",
         "candidate_files": ["Quina.xlsx", "quina.xlsx"],
         "numbers_per_game": 5,
+        "min_numbers_per_game": 5,
+        "max_numbers_per_game": 5,
         "max_number": 80,
         "bucket_size": 10,
         "reference_pool_size": 15,
@@ -99,44 +103,44 @@ def resolver_caminho_base(config: dict[str, object]) -> Path:
         if caminho.exists():
             return caminho
 
-    esperados = {_normalizar_nome_arquivo(Path(str(nome)).stem) for nome in config.get("candidate_files", [])}
-    disponiveis = [arquivo for arquivo in DATA_DIR.glob("*") if arquivo.is_file()]
+    nomes_esperados = {_normalizar_nome_arquivo(Path(str(nome)).stem) for nome in config.get("candidate_files", [])}
+    arquivos_disponiveis = [arquivo for arquivo in DATA_DIR.glob("*") if arquivo.is_file()]
 
-    for arquivo in disponiveis:
-        if _normalizar_nome_arquivo(arquivo.stem) in esperados:
+    for arquivo in arquivos_disponiveis:
+        if _normalizar_nome_arquivo(arquivo.stem) in nomes_esperados:
             return arquivo
 
-    arquivos_encontrados = ", ".join(sorted(arquivo.name for arquivo in disponiveis)) or "nenhum arquivo encontrado"
+    encontrados = ", ".join(sorted(arquivo.name for arquivo in arquivos_disponiveis)) or "nenhum arquivo encontrado"
     raise FileNotFoundError(
         f"Base nao encontrada para {config['label']}. Pasta verificada: {DATA_DIR}. "
-        f"Arquivos encontrados: {arquivos_encontrados}."
+        f"Arquivos encontrados: {encontrados}."
     )
 
 
 def carregar_base(caminho: str | Path) -> pd.DataFrame:
     df = pd.read_excel(caminho)
-    df.columns = [str(col).strip().lower() for col in df.columns]
+    df.columns = [str(coluna).strip().lower() for coluna in df.columns]
     return df
 
 
 def detectar_colunas_dezenas(df: pd.DataFrame) -> list[str]:
-    colunas = [col for col in df.columns if "bola" in col or "dezena" in col]
-    return sorted(colunas, key=lambda col: int("".join(ch for ch in col if ch.isdigit()) or 0))
+    colunas = [coluna for coluna in df.columns if "bola" in coluna or "dezena" in coluna]
+    return sorted(colunas, key=lambda coluna: int("".join(char for char in coluna if char.isdigit()) or 0))
 
 
 def preparar_base(df: pd.DataFrame, colunas_dezenas: list[str]) -> pd.DataFrame:
     base = df.copy()
-    for col in colunas_dezenas:
-        base[col] = pd.to_numeric(base[col], errors="coerce")
+    for coluna in colunas_dezenas:
+        base[coluna] = pd.to_numeric(base[coluna], errors="coerce")
     return base.dropna(subset=colunas_dezenas).copy()
 
 
 def descobrir_coluna_data(df: pd.DataFrame) -> str | None:
-    candidatas = [col for col in df.columns if "data" in col or col.startswith("dt")]
-    for col in candidatas:
-        serie = pd.to_datetime(df[col], dayfirst=True, errors="coerce")
+    candidatas = [coluna for coluna in df.columns if "data" in coluna or coluna.startswith("dt")]
+    for coluna in candidatas:
+        serie = pd.to_datetime(df[coluna], dayfirst=True, errors="coerce")
         if serie.notna().any():
-            return col
+            return coluna
     return None
 
 
@@ -167,7 +171,7 @@ def contar_pares(jogo: list[int] | tuple[int, ...]) -> int:
 
 def contar_sequencias_consecutivas(jogo: list[int] | tuple[int, ...]) -> int:
     ordenado = sorted(int(numero) for numero in jogo)
-    return sum(1 for idx in range(len(ordenado) - 1) if ordenado[idx + 1] - ordenado[idx] == 1)
+    return sum(1 for indice in range(len(ordenado) - 1) if ordenado[indice + 1] - ordenado[indice] == 1)
 
 
 def contar_faixas_jogo(
@@ -203,14 +207,19 @@ def calcular_atraso(df: pd.DataFrame, colunas_dezenas: list[str]) -> pd.DataFram
     df_long = df_long.sort_values("concurso_idx")
 
     ultimo_concurso = df_long.groupby("numero", as_index=False)["concurso_idx"].max()
-    ultimo_idx = int(df_long["concurso_idx"].max())
-    ultimo_concurso["atraso"] = ultimo_idx - ultimo_concurso["concurso_idx"]
-
+    ultimo_indice = int(df_long["concurso_idx"].max())
+    ultimo_concurso["atraso"] = ultimo_indice - ultimo_concurso["concurso_idx"]
     return ultimo_concurso.sort_values("atraso", ascending=False).reset_index(drop=True)
 
 
 def _round_half_up(valor: float) -> int:
     return int(math.floor(valor + 0.5))
+
+
+def calcular_combinacoes_cobertas(qtd_apostada: int, qtd_sorteio: int) -> int:
+    if qtd_apostada < qtd_sorteio:
+        return 0
+    return math.comb(qtd_apostada, qtd_sorteio)
 
 
 def analisar_loteria(lottery_key: str) -> dict[str, object]:
@@ -231,14 +240,12 @@ def analisar_loteria(lottery_key: str) -> dict[str, object]:
 
     numbers_per_game = int(config["numbers_per_game"])
     max_number = int(config["max_number"])
-    bucket_size = int(config["bucket_size"])
-    faixas = montar_faixas(max_number, bucket_size)
+    faixas = montar_faixas(max_number, int(config["bucket_size"]))
 
     soma_series = dezenas_df.sum(axis=1)
     pares_series = dezenas_df.apply(lambda linha: contar_pares(linha.tolist()), axis=1)
-
     ocupacao_faixas_series = dezenas_df.apply(
-        lambda linha: sum(count > 0 for count in contar_faixas_jogo(linha.tolist(), faixas)),
+        lambda linha: sum(valor > 0 for valor in contar_faixas_jogo(linha.tolist(), faixas)),
         axis=1,
     )
     concentracao_faixas_series = dezenas_df.apply(
@@ -277,6 +284,9 @@ def analisar_loteria(lottery_key: str) -> dict[str, object]:
         "faixas": faixas,
         "faixas_rotulos": [rotulo_faixa(inicio, fim) for inicio, fim in faixas],
         "qtd_dezenas": numbers_per_game,
+        "qtd_dezenas_sorteio": numbers_per_game,
+        "qtd_dezenas_min": int(config.get("min_numbers_per_game", numbers_per_game)),
+        "qtd_dezenas_max": int(config.get("max_numbers_per_game", numbers_per_game)),
         "universo": list(range(1, max_number + 1)),
         "reference_pool_size": reference_pool_size,
         "top_quentes": top_quentes,
@@ -295,6 +305,84 @@ def analisar_loteria(lottery_key: str) -> dict[str, object]:
         "data_ultimo": data_ultimo,
         "maior_atraso": maior_atraso,
     }
+
+
+def _ajustar_desvio_soma(
+    desvio_historico: float,
+    max_number: int,
+    qtd_sorteio: int,
+    qtd_aposta: int,
+) -> float:
+    if not desvio_historico:
+        return 0.0
+
+    denominador = qtd_sorteio * (max_number - qtd_sorteio)
+    numerador = qtd_aposta * (max_number - qtd_aposta)
+    if denominador <= 0 or numerador <= 0:
+        return float(desvio_historico)
+
+    return float(desvio_historico) * math.sqrt(numerador / denominador)
+
+
+def _calcular_media_faixas_ocupadas(
+    faixas: list[tuple[int, int]],
+    max_number: int,
+    qtd_aposta: int,
+) -> float:
+    total_combinacoes = math.comb(max_number, qtd_aposta)
+    expectativa = 0.0
+
+    for inicio, fim in faixas:
+        tamanho_faixa = fim - inicio + 1
+        fora_da_faixa = max_number - tamanho_faixa
+        if qtd_aposta <= fora_da_faixa:
+            ausente = math.comb(fora_da_faixa, qtd_aposta) / total_combinacoes
+        else:
+            ausente = 0.0
+        expectativa += 1.0 - ausente
+
+    return expectativa
+
+
+def preparar_analise_aposta(analise: dict[str, object], qtd_dezenas: int) -> dict[str, object]:
+    qtd_sorteio = int(analise["qtd_dezenas_sorteio"])
+    qtd_min = int(analise["qtd_dezenas_min"])
+    qtd_max = int(analise["qtd_dezenas_max"])
+
+    if qtd_dezenas < qtd_min or qtd_dezenas > qtd_max:
+        raise ValueError(
+            f"Quantidade de dezenas fora do permitido para esta loteria: {qtd_dezenas}. "
+            f"Intervalo aceito: {qtd_min} a {qtd_max}."
+        )
+
+    if qtd_dezenas == int(analise["qtd_dezenas"]):
+        return dict(analise)
+
+    max_number = int(analise["config"]["max_number"])
+    faixas = list(analise["faixas"])
+    fator = qtd_dezenas / qtd_sorteio
+    bucket_capacity = max(fim - inicio + 1 for inicio, fim in faixas)
+
+    analise_aposta = dict(analise)
+    analise_aposta["qtd_dezenas"] = qtd_dezenas
+    analise_aposta["media_soma"] = float(analise["media_soma"]) * fator
+    analise_aposta["desvio_soma"] = _ajustar_desvio_soma(
+        float(analise["desvio_soma"]),
+        max_number=max_number,
+        qtd_sorteio=qtd_sorteio,
+        qtd_aposta=qtd_dezenas,
+    )
+    analise_aposta["media_pares"] = float(analise["media_pares"]) * fator
+    analise_aposta["media_faixas_ocupadas"] = _calcular_media_faixas_ocupadas(
+        faixas=faixas,
+        max_number=max_number,
+        qtd_aposta=qtd_dezenas,
+    )
+    analise_aposta["media_concentracao_faixas"] = min(
+        float(bucket_capacity),
+        max(1.0, float(analise["media_concentracao_faixas"]) * fator),
+    )
+    return analise_aposta
 
 
 def score_pares_impares(jogo: list[int]) -> int:
@@ -380,7 +468,6 @@ def score_estrategico(jogo: list[int], quentes: list[int], frios: list[int], atr
     score += _score_faixa_alvo(quentes_no_jogo, hot_min, hot_max, 4, 2)
     score += _score_faixa_alvo(frios_no_jogo, cold_min, cold_max, 3, 2)
     score += _score_faixa_alvo(atrasados_no_jogo, late_min, late_max, 3, 2)
-
     return min(score, 10)
 
 
@@ -440,10 +527,10 @@ def calcular_score_jogo(
     if pesos is None:
         pesos = obter_pesos_perfil("equilibrado")
 
-    faixas = analise["faixas"]
-    quentes = analise["top_quentes"]
-    frios = analise["top_frios"]
-    atrasados = analise["top_atrasados"]
+    faixas = list(analise["faixas"])
+    quentes = [int(numero) for numero in analise["top_quentes"]]
+    frios = [int(numero) for numero in analise["top_frios"]]
+    atrasados = [int(numero) for numero in analise["top_atrasados"]]
 
     pares = contar_pares(jogo)
     soma_total = int(sum(jogo))
@@ -457,10 +544,10 @@ def calcular_score_jogo(
 
     s1 = score_pares_impares(jogo)
     s2 = score_faixas(
-        jogo,
-        faixas,
-        float(analise["media_faixas_ocupadas"]),
-        float(analise["media_concentracao_faixas"]),
+        jogo=jogo,
+        faixas=faixas,
+        media_ocupadas=float(analise["media_faixas_ocupadas"]),
+        media_concentracao=float(analise["media_concentracao_faixas"]),
     )
     s3 = score_soma(jogo, float(analise["media_soma"]), float(analise["desvio_soma"]))
     s4 = score_estrategico(jogo, quentes, frios, atrasados)
@@ -475,6 +562,7 @@ def calcular_score_jogo(
 
     return {
         "jogo": sorted(int(numero) for numero in jogo),
+        "tamanho_jogo": len(jogo),
         "pares": pares,
         "impares": len(jogo) - pares,
         "soma_total": soma_total,
@@ -545,21 +633,21 @@ def _amostrar_unicos(
 
 
 def _quantidades_por_perfil(perfil: str, qtd: int) -> list[tuple[str, int]]:
-    pesos = {
+    blueprint_por_perfil = {
         "conservador": [("quentes", 0.45), ("atrasados", 0.15)],
         "equilibrado": [("quentes", 0.30), ("frios", 0.25), ("atrasados", 0.15)],
         "agressivo": [("frios", 0.30), ("atrasados", 0.25)],
         "atrasados": [("atrasados", 0.40), ("quentes", 0.20)],
     }
-    blueprint = pesos.get(perfil, [])
+    blueprint = blueprint_por_perfil.get(perfil, [])
 
     quantidades: list[tuple[str, int]] = []
     restante = qtd
 
-    for idx, (nome_pool, proporcao) in enumerate(blueprint):
+    for indice, (nome_pool, proporcao) in enumerate(blueprint):
         minimo = 1 if proporcao > 0 else 0
         alvo = max(minimo, _round_half_up(qtd * proporcao))
-        if idx == len(blueprint) - 1:
+        if indice == len(blueprint) - 1:
             alvo = min(alvo, max(0, restante))
         else:
             alvo = min(alvo, max(0, restante - 1))
@@ -570,6 +658,81 @@ def _quantidades_por_perfil(perfil: str, qtd: int) -> list[tuple[str, int]]:
             break
 
     return quantidades
+
+
+def _calcular_metricas_cobertura(
+    jogo: list[int],
+    jogos_escolhidos: list[set[int]],
+    uso_dezenas: Counter,
+) -> tuple[int, float, float]:
+    if not jogos_escolhidos:
+        return 0, 0.0, 0.0
+
+    conjunto_jogo = set(jogo)
+    sobreposicoes = [len(conjunto_jogo & jogo_existente) for jogo_existente in jogos_escolhidos]
+    sobreposicao_maxima = max(sobreposicoes)
+    sobreposicao_media = sum(sobreposicoes) / len(sobreposicoes)
+    repeticao_media = sum(uso_dezenas.get(numero, 0) for numero in jogo) / len(jogo)
+    return sobreposicao_maxima, sobreposicao_media, repeticao_media
+
+
+def _selecionar_jogos_cobertura(
+    df_resultados: pd.DataFrame,
+    n_jogos_desejados: int,
+    intensidade_cobertura: float,
+) -> pd.DataFrame:
+    candidatos = df_resultados.copy().reset_index(drop=True)
+    jogos_escolhidos: list[dict[str, object]] = []
+    jogos_escolhidos_sets: list[set[int]] = []
+    uso_dezenas: Counter = Counter()
+
+    while len(jogos_escolhidos) < n_jogos_desejados and not candidatos.empty:
+        melhor_idx = None
+        melhor_score = None
+        melhor_metricas = None
+
+        for idx, row in candidatos.iterrows():
+            jogo = [int(numero) for numero in row["jogo"]]
+            sobreposicao_maxima, sobreposicao_media, repeticao_media = _calcular_metricas_cobertura(
+                jogo=jogo,
+                jogos_escolhidos=jogos_escolhidos_sets,
+                uso_dezenas=uso_dezenas,
+            )
+            tamanho_jogo = len(jogo)
+            penalidade = intensidade_cobertura * (
+                (sobreposicao_maxima / tamanho_jogo) * 5.0
+                + (sobreposicao_media / tamanho_jogo) * 3.0
+                + repeticao_media * 1.2
+            )
+            score_cobertura = float(row["score_total"]) - penalidade
+            metricas = (
+                round(score_cobertura, 2),
+                round(penalidade, 2),
+                int(sobreposicao_maxima),
+                round(sobreposicao_media, 2),
+                round(repeticao_media, 2),
+            )
+
+            if melhor_score is None or score_cobertura > melhor_score:
+                melhor_idx = idx
+                melhor_score = score_cobertura
+                melhor_metricas = metricas
+
+        row = candidatos.loc[int(melhor_idx)].copy()
+        (
+            row["score_cobertura"],
+            row["penalidade_cobertura"],
+            row["sobreposicao_maxima"],
+            row["sobreposicao_media"],
+            row["repeticao_media_dezenas"],
+        ) = melhor_metricas
+
+        jogos_escolhidos.append(row.to_dict())
+        uso_dezenas.update(int(numero) for numero in row["jogo"])
+        jogos_escolhidos_sets.append(set(int(numero) for numero in row["jogo"]))
+        candidatos = candidatos.drop(index=int(melhor_idx)).reset_index(drop=True)
+
+    return pd.DataFrame(jogos_escolhidos)
 
 
 def gerar_jogo_por_perfil(
@@ -609,16 +772,19 @@ def gerar_melhores_jogos(
     perfil: str,
     analise: dict[str, object],
     pesos: dict[str, float] | None = None,
+    modo_selecao: str = "score",
+    intensidade_cobertura: float = 1.0,
 ) -> pd.DataFrame:
     rng = np.random.default_rng()
     jogos_unicos: set[tuple[int, ...]] = set()
     resultados: list[dict[str, object]] = []
 
+    multiplicador = 24 if modo_selecao == "cobertura" else 12
+    limite_unicos = max(n_jogos_desejados * multiplicador, n_jogos_desejados)
     tentativas = 0
-    limite_unicos = max(n_jogos_desejados * 12, n_jogos_desejados)
 
     while tentativas < n_tentativas and len(jogos_unicos) < limite_unicos:
-        jogo = gerar_jogo_por_perfil(perfil, analise, rng=rng)
+        jogo = gerar_jogo_por_perfil(perfil=perfil, analise=analise, rng=rng)
         jogo_tuple = tuple(sorted(jogo))
 
         if jogo_tuple not in jogos_unicos:
@@ -632,4 +798,12 @@ def gerar_melhores_jogos(
 
     df_resultados = pd.DataFrame(resultados)
     df_resultados = df_resultados.sort_values("score_total", ascending=False).reset_index(drop=True)
+
+    if modo_selecao == "cobertura":
+        return _selecionar_jogos_cobertura(
+            df_resultados=df_resultados,
+            n_jogos_desejados=n_jogos_desejados,
+            intensidade_cobertura=float(intensidade_cobertura),
+        )
+
     return df_resultados.head(n_jogos_desejados)
