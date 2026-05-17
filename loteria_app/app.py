@@ -230,7 +230,7 @@ def mostrar_logo() -> None:
     if LOGO_PATH.exists():
         st.sidebar.image(str(LOGO_PATH), use_container_width=True)
     else:
-        st.sidebar.markdown("## LOT")
+        st.sidebar.markdown("## LOTERIAS")
 
 
 def sincronizar_pesos(chave_loteria: str, perfil: str) -> None:
